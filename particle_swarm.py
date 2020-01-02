@@ -16,6 +16,7 @@ POSITION_RANGE = [-100, 100]
 VELOCITY_RANGE = [-10, 10]
 ###############################
 
+
 def goal_function(position):
     return 0
 
