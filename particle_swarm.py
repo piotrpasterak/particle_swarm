@@ -11,13 +11,14 @@ import random
 INERTIA_WEIGHT = 0.5
 IND_FOCUS_CONSTANT = 1
 SWARM_FOCUS_CONSTANT = 2
-DIMENSIONS = 2
-POSITION_RANGE = [-100, 100]
-VELOCITY_RANGE = [-10, 10]
+DIMENSIONS = 30
+POSITION_RANGE = [1, 30]
+VELOCITY_RANGE = [-29, 29]
 ###############################
 
 
 def goal_function(position):
+
     return 0
 
 
