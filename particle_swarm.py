@@ -11,9 +11,9 @@ import json
 
 ###############################
 # Constants
-INERTIA_WEIGHT = 0.5
+INERTIA_WEIGHT = 0.6
 IND_FOCUS_CONSTANT = 1
-SWARM_FOCUS_CONSTANT = 2
+SWARM_FOCUS_CONSTANT = 4
 DIMENSIONS = 30
 POSITION_RANGE = [1, 30]
 VELOCITY_RANGE = [-29, 29]
@@ -46,37 +46,40 @@ def sigmoid(x):
 
 def goal_function(positions):
     travel_sum = 0;
-    temp_pos={}
+    temp_pos=[]
     idx =0
 
     for i in positions:
-        temp_pos[idx] = i
+        temp_pos.append((idx, i))
         idx += 1
 
-    right_order = {k: v for k, v in sorted(temp_pos.items(), key=lambda item: item[1])}
+    temp_pos.sort(key = lambda item: item[1])
 
     with open('data/cites.json', encoding="utf8") as json_file:
         data = json.load(json_file)
 
         base = data["cites"][0]
-        length = len(right_order)
+        length = len(temp_pos)
         i = 1 #KRK is 0
         car_capacity = 0
 
-        for key in right_order:
+        while i < length:
             if car_capacity == 0:
                 travel_sum += calculate_distance(base["latitude"], base["longitude"],
-                                               data["cites"][key+1]["latitude"], data["cites"][key+1]["longitude"])
-                car_capacity += data["cites"][key+1]["demand"]
+                                               data["cites"][temp_pos[i][0]+1]["latitude"], data["cites"][temp_pos[i][0]+1]["longitude"])
+                car_capacity += data["cites"][temp_pos[i][0]+1]["demand"]
+                i += 1
             else:
-                if car_capacity + data["cites"][key + 1]["demand"] > CAPACITY:
-                    travel_sum += calculate_distance(data["cites"][key]["latitude"], data["cites"][key]["longitude"],
-                                         base["latitude"], base["longitude"])
+                if i+1 == length or car_capacity + data["cites"][temp_pos[i + 1][0] + 1]["demand"] > CAPACITY:
+                    travel_sum += calculate_distance(data["cites"][temp_pos[i][0]]["latitude"],
+                                                     data["cites"][temp_pos[i][0]]["longitude"],
+                                                     base["latitude"], base["longitude"])
                     car_capacity = 0
                 else:
-                    travel_sum += calculate_distance(data["cites"][key]["latitude"], data["cites"][key]["longitude"],
-                                             data["cites"][key + 1]["latitude"], data["cites"][key + 1]["longitude"])
-                    car_capacity += data["cites"][key + 1]["demand"]
+                    travel_sum += calculate_distance(data["cites"][temp_pos[i][0]+1]["latitude"], data["cites"][temp_pos[i][0]+1]["longitude"],
+                                             data["cites"][temp_pos[i+1][0] + 1]["latitude"], data["cites"][temp_pos[i+1][0] + 1]["longitude"])
+                    car_capacity += data["cites"][temp_pos[i][0] + 1]["demand"]
+                    i += 1
 
     return travel_sum
 
@@ -157,7 +160,7 @@ class Swarm:
 
 
 if __name__ == '__main__':
-    test_swarm = Swarm(200, 300)
+    test_swarm = Swarm(100, 250)
     test_swarm.calculate()
     print(str(test_swarm.best_swarm_distance) + "\n")
     print(test_swarm.best_swarm_position)
