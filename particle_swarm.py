@@ -16,8 +16,8 @@ IND_FOCUS_CONSTANT = 1
 SWARM_FOCUS_CONSTANT = 4
 DIMENSIONS = 30
 POSITION_RANGE = [1, 30]
-VELOCITY_RANGE = [-29, 29]
-CAPACITY = 100
+VELOCITY_RANGE = [-10, 10]
+CAPACITY = 1000
 ###############################
 
 # approximate radius of earth in km
@@ -45,7 +45,7 @@ def sigmoid(x):
 
 
 def goal_function(positions):
-    travel_sum = 0;
+    travel_sum = 0
     temp_pos=[]
     idx =0
 
@@ -71,8 +71,8 @@ def goal_function(positions):
                 i += 1
             else:
                 if i+1 == length or car_capacity + data["cites"][temp_pos[i + 1][0] + 1]["demand"] > CAPACITY:
-                    travel_sum += calculate_distance(data["cites"][temp_pos[i][0]]["latitude"],
-                                                     data["cites"][temp_pos[i][0]]["longitude"],
+                    travel_sum += calculate_distance(data["cites"][temp_pos[i][0] + 1]["latitude"],
+                                                     data["cites"][temp_pos[i][0] + 1]["longitude"],
                                                      base["latitude"], base["longitude"])
                     car_capacity = 0
                 else:
@@ -81,7 +81,37 @@ def goal_function(positions):
                     car_capacity += data["cites"][temp_pos[i][0] + 1]["demand"]
                     i += 1
 
-    return travel_sum
+    return travel_sum, temp_pos
+
+
+def decode_travel(positions):
+    travel = []
+    with open('data/cites.json', encoding="utf8") as json_file:
+        data = json.load(json_file)
+
+        base = data["cites"][0]
+        length = len(positions)
+        i = 1  # KRK is 0
+        car_capacity = 0
+
+        while i < length:
+            if car_capacity == 0:
+                travel.append(base["city_name"])
+                travel.append( data["cites"][positions[i][0] + 1]["city_name"])
+
+                car_capacity += data["cites"][positions[i][0] + 1]["demand"]
+                i += 1
+            else:
+                if i + 1 == length or car_capacity + data["cites"][positions[i + 1][0] + 1]["demand"] > CAPACITY:
+                    travel.append(data["cites"][positions[i][0] + 1]["city_name"])
+                    travel.append(base["city_name"])
+                    car_capacity = 0
+                    i += 1
+                else:
+                    travel.append(data["cites"][positions[i][0] + 1]["city_name"])
+                    car_capacity += data["cites"][positions[i][0] + 1]["demand"]
+                    i += 1
+    return travel
 
 
 class Particle:
@@ -96,15 +126,15 @@ class Particle:
         self.init_velocity()
 
     def init_position(self):
-        for i in range(0, DIMENSIONS-1):
+        for i in range(0, DIMENSIONS):
             self.position.append(random.uniform(POSITION_RANGE[0], POSITION_RANGE[1]))
 
     def init_velocity(self):
-        for i in range(0, DIMENSIONS-1):
+        for i in range(0, DIMENSIONS):
             self.velocity.append(random.uniform(VELOCITY_RANGE[0], VELOCITY_RANGE[1]))
 
     def evaluate_fitness(self):
-        self.distance = goal_function(self.position)
+        self.distance, _ = goal_function(self.position)
 
         if self.distance < self.distance or self.best_distance == -1:
             self.best_position = self.position
@@ -112,7 +142,7 @@ class Particle:
 
     def update_velocity(self, best_swarm_position):
 
-        for i in range(0, DIMENSIONS-1):
+        for i in range(0, DIMENSIONS):
             random_coefficient = random.random()
             velocity_ind_focus_part = IND_FOCUS_CONSTANT * random_coefficient * (self.best_position[i] - self.position[i])
             random_coefficient = random.random()
@@ -120,16 +150,16 @@ class Particle:
             self.velocity[i] = INERTIA_WEIGHT * self.velocity[i] + velocity_ind_focus_part + velocity_swarm_focus_part
 
     def update_position(self):
-        for i in range(0, DIMENSIONS-1):
+        for i in range(0, DIMENSIONS):
             self.position[i] = self.position[i] + self.velocity[i]
 
             # adjust maximum position if necessary
             if self.position[i] > POSITION_RANGE[1]:
-                self.position[i] = POSITION_RANGE[1]
+                self.position[i] = POSITION_RANGE[1] * sigmoid(self.position[i])
 
             # adjust minimum position if necessary
             if self.position[i] < POSITION_RANGE[0]:
-                self.position[i] = POSITION_RANGE[0]
+                self.position[i] = POSITION_RANGE[0] * sigmoid(self.position[i])
 
     def evaluate_step(self, best_group_position):
         self.evaluate_fitness()
@@ -160,8 +190,10 @@ class Swarm:
 
 
 if __name__ == '__main__':
-    test_swarm = Swarm(100, 250)
+    test_swarm = Swarm(60, 150)
     test_swarm.calculate()
     print(str(test_swarm.best_swarm_distance) + "\n")
-    print(test_swarm.best_swarm_position)
+    _, best_travel = goal_function(test_swarm.best_swarm_position)
+    print(best_travel)
+    print(decode_travel(best_travel))
 
