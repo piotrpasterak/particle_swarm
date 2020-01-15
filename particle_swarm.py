@@ -7,7 +7,7 @@
 import random
 from math import sin, cos, sqrt, atan2, radians, exp
 import json
-
+import sys, getopt
 
 ###############################
 # Constants
@@ -15,8 +15,8 @@ INERTIA_WEIGHT = 0.6
 IND_FOCUS_CONSTANT = 1
 SWARM_FOCUS_CONSTANT = 4
 DIMENSIONS = 30
-POSITION_RANGE = [1, 30]
-VELOCITY_RANGE = [-10, 10]
+POSITION_RANGE = [0.1, 30]
+VELOCITY_RANGE = [-29, 29]
 CAPACITY = 1000
 ###############################
 
@@ -60,24 +60,27 @@ def goal_function(positions):
 
         base = data["cites"][0]
         length = len(temp_pos)
-        i = 1 #KRK is 0
+        i = 0
         car_capacity = 0
 
         while i < length:
             if car_capacity == 0:
                 travel_sum += calculate_distance(base["latitude"], base["longitude"],
-                                               data["cites"][temp_pos[i][0]+1]["latitude"], data["cites"][temp_pos[i][0]+1]["longitude"])
-                car_capacity += data["cites"][temp_pos[i][0]+1]["demand"]
-                i += 1
+                                                 data["cites"][temp_pos[i][0] + 1]["latitude"],
+                                                 data["cites"][temp_pos[i][0] + 1]["longitude"])
+                car_capacity += data["cites"][temp_pos[i][0] + 1]["demand"]
             else:
-                if i+1 == length or car_capacity + data["cites"][temp_pos[i + 1][0] + 1]["demand"] > CAPACITY:
+                if i + 1 == length or car_capacity + data["cites"][temp_pos[i + 1][0] + 1]["demand"] > CAPACITY:
                     travel_sum += calculate_distance(data["cites"][temp_pos[i][0] + 1]["latitude"],
                                                      data["cites"][temp_pos[i][0] + 1]["longitude"],
                                                      base["latitude"], base["longitude"])
                     car_capacity = 0
+                    i += 1
                 else:
-                    travel_sum += calculate_distance(data["cites"][temp_pos[i][0]+1]["latitude"], data["cites"][temp_pos[i][0]+1]["longitude"],
-                                             data["cites"][temp_pos[i+1][0] + 1]["latitude"], data["cites"][temp_pos[i+1][0] + 1]["longitude"])
+                    travel_sum += calculate_distance(data["cites"][temp_pos[i][0]+1]["latitude"],
+                                                     data["cites"][temp_pos[i][0]+1]["longitude"],
+                                                     data["cites"][temp_pos[i+1][0] + 1]["latitude"],
+                                                     data["cites"][temp_pos[i+1][0] + 1]["longitude"])
                     car_capacity += data["cites"][temp_pos[i][0] + 1]["demand"]
                     i += 1
 
@@ -91,13 +94,13 @@ def decode_travel(positions):
 
         base = data["cites"][0]
         length = len(positions)
-        i = 1  # KRK is 0
+        i = 0
         car_capacity = 0
 
         while i < length:
             if car_capacity == 0:
                 travel.append(base["city_name"])
-                travel.append( data["cites"][positions[i][0] + 1]["city_name"])
+                travel.append(data["cites"][positions[i][0] + 1]["city_name"])
 
                 car_capacity += data["cites"][positions[i][0] + 1]["demand"]
                 i += 1
@@ -189,11 +192,32 @@ class Swarm:
                 particle.evaluate_step(self.best_swarm_position)
 
 
-if __name__ == '__main__':
-    test_swarm = Swarm(60, 150)
+def main(argv):
+    iteration = 60
+    swarm_size = 100
+    try:
+        opts, args = getopt.getopt(argv,"hi:s:",["iteration=","swarm_size="])
+    except getopt.GetoptError:
+        print ('partricle_swarm.py -i <iteration no> -s <swarm size>')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print('partricle_swarm.py -i <iteration no> -s <swarm size>')
+            sys.exit()
+        elif opt in ("-i", "--iteration"):
+            iteration = int(arg)
+        elif opt in ("-s", "--swarm_size"):
+            swarm_size = int(arg)
+    print('Number of iteration is {}.'.format(iteration))
+    print('Swarm size is {} particles.'.format(swarm_size))
+
+    test_swarm = Swarm(swarm_size, iteration)
     test_swarm.calculate()
     print(str(test_swarm.best_swarm_distance) + "\n")
     _, best_travel = goal_function(test_swarm.best_swarm_position)
     print(best_travel)
     print(decode_travel(best_travel))
 
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
